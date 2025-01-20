@@ -1,0 +1,9 @@
+예시데이터
+
+{'item': [{'acdnKindNm': '침수분손',
+           'acdnOccrDtm': '2024-07-10 03:00:00',
+           'dtaWrtDt': '20250113',
+           'nowVhclNo': '97오3291'}]}
+127.0.0.1 - - [15/Jan/2025 00:39:25] "GET /api/cars?carNum=97오3291 HTTP/1.1" 200 -
+
+{'item': []}
