@@ -1,11 +1,9 @@
-car_search
 import 'package:flutter/material.dart';
 import 'package:car/models/car_model.dart';
 import 'package:car/views/search_result.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:car/services/admob_service.dart';
 
 class CarSearchScreen extends StatefulWidget {
@@ -19,7 +17,7 @@ class _CarSearchScreenState extends State<CarSearchScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   String? _carNum;
   CarModel? _carModel;
-  BannerAd? _bannerAd; // 광고
+
 
   Future<CarModel?> searchCar(String carNum) async {
     // String url = 'http://127.0.0.1:5000/api/cars?carNum=$carNum';
@@ -63,18 +61,8 @@ class _CarSearchScreenState extends State<CarSearchScreen> {
   @override
   void initState() {
     super.initState();
-    _createBannerAd(); //추가
   }
 
-  //배너 광고 생성
-  void _createBannerAd() {
-    _bannerAd = BannerAd(
-      size: AdSize.fullBanner, //배너 사이즈
-      adUnitId: AdMobService.bannerAdUnitId!, //광고ID 등록
-      listener: AdMobService.bannerAdListener, //리스너 등록
-      request: const AdRequest(),
-    )..load();
-  }
 
 
   @override
@@ -138,8 +126,10 @@ class _CarSearchScreenState extends State<CarSearchScreen> {
                 const Icon(Icons.gpp_good, color: Color.fromARGB(255, 0, 122, 255), size: 100,),
                 const Text("침수 이력이 없습니다.", style: TextStyle(color: Color.fromARGB(255, 0, 122, 255), fontSize: 20),),
               ],
-              AdWidget(
-                ad: _bannerAd!,
+              BannerAdWidget(
+                adUnitId: "ca-app-pub-6715466232441720/3974272160", // 테스트시에는 오른쪽 광고 단위 ID 입력 : ca-app-pub-3940256099942544/9214589741
+                width: 500,
+                height: 70,
               ),
             ],
           ),
