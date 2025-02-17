@@ -4,7 +4,8 @@ import 'package:car/views/search_result.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:car/services/admob_service.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:car/provider.dart';
 
 class CarSearchScreen extends StatefulWidget {
   const CarSearchScreen({super.key});
@@ -17,10 +18,27 @@ class _CarSearchScreenState extends State<CarSearchScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   String? _carNum;
   CarModel? _carModel;
+  BannerAd? _banner; // 광고
 
+  // 광고
+  @override
+  void initState() {
+    super.initState();
+    adHelper().loadBanner((ad) {
+      setState(() {
+        _banner = ad;
+      });
+    });
+  }
+
+  // 광고
+  @override
+  void dispose() {
+    _banner?.dispose();
+    super.dispose();
+  }
 
   Future<CarModel?> searchCar(String carNum) async {
-    // String url = 'http://127.0.0.1:5000/api/cars?carNum=$carNum';
     String url = 'http://54.180.109.207:5000/api/cars?carNum=$carNum';
 
     try {
@@ -29,7 +47,10 @@ class _CarSearchScreenState extends State<CarSearchScreen> {
       if (response.statusCode == 200) {
         var jsonResponse = json.decode(response.body);
         print(jsonResponse);
-
+        if (jsonResponse == null || jsonResponse.isEmpty) {
+          print('No data found');
+          return null;
+        }
         return CarModel.fromJson(jsonResponse);
       } else {
         print('Failed to load car data: ${response.statusCode}');
@@ -59,14 +80,9 @@ class _CarSearchScreenState extends State<CarSearchScreen> {
   }
 
   @override
-  void initState() {
-    super.initState();
-  }
-
-
-
-  @override
   Widget build(BuildContext context) {
+    final banner = _banner;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -79,61 +95,82 @@ class _CarSearchScreenState extends State<CarSearchScreen> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              SearchForm(
-                formKey: _formKey,
-                onSaved: (value) {
-                  _carNum = value;
-                },
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return '차량 번호를 입력하세요';
-                  }
-                  return null;
-                },
-              ),
-              const Padding(
-                padding: EdgeInsets.all(7.0),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  if (_formKey.currentState?.validate() == true) {
-                    _formKey.currentState?.save();
-
-                    searchCar(_carNum!).then((car) {
-                      setState(() {
-                        _carModel = car;
-                      });
-                      if (_carModel != null) {
-                        _saveSearchHistory(_carNum!, _carModel!.acdnKindNm);
+        child: Column(
+          children: [
+            Form(
+              key: _formKey,
+              child: Column(
+                children: [
+                  SearchForm(
+                    formKey: _formKey,
+                    onSaved: (value) {
+                      _carNum = value;
+                    },
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return '차량 번호를 입력하세요';
                       }
-                    });
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color.fromARGB(255, 54, 52, 163), // 배경색 설정
-                ),
-                child: const Text('검색'),
+                      return null;
+                    },
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.all(7.0),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      if (_formKey.currentState?.validate() == true) {
+                        _formKey.currentState?.save();
+
+                        searchCar(_carNum!).then((car) {
+                          setState(() {
+                            _carModel = car;
+                          });
+                          if (_carModel != null) {
+                            _saveSearchHistory(_carNum!, _carModel!.acdnKindNm);
+                          }
+                        });
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color.fromARGB(255, 54, 52, 163), // 배경색 설정
+                    ),
+                    child: const Text('검색'),
+                  ),
+                ],
               ),
-              // 차량 정보를 표로 보여주는 부분
-              if (_carModel != null) ...[
-                const SizedBox(height: 15),
-                SearchResult(carModel: _carModel!, carNum: _carNum!),
-              ] else if (_carModel == null && _carNum != null) ...[
-                const Icon(Icons.gpp_good, color: Color.fromARGB(255, 0, 122, 255), size: 100,),
-                const Text("침수 이력이 없습니다.", style: TextStyle(color: Color.fromARGB(255, 0, 122, 255), fontSize: 20),),
-              ],
-              BannerAdWidget(
-                adUnitId: "ca-app-pub-6715466232441720/3974272160", // 테스트시에는 오른쪽 광고 단위 ID 입력 : ca-app-pub-3940256099942544/9214589741
-                width: 500,
-                height: 70,
+            ),
+            // 차량 정보를 표로 보여주는 부분
+            if (_carModel != null) ...[
+              SizedBox(height: 15),
+              SearchResult(carModel: _carModel!, carNum: _carNum!),
+            ] else if (_carModel == null && _carNum != null) ...[
+              Icon(
+                Icons.gpp_good,
+                color: Color.fromARGB(255, 0, 122, 255),
+                size: 100,
+              ),
+              Text(
+                "침수 이력이 없습니다.",
+                style: TextStyle(color: Color.fromARGB(255, 0, 122, 255), fontSize: 20),
               ),
             ],
-          ),
+            // 배너 광고 및 그리드 뷰 표시
+            if (banner != null) ...[
+              _buildBanner(banner), // 배너 광고 표시
+            ]
+          ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildBanner(BannerAd ad) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 12.0),
+      child: SizedBox(
+        width: ad.size.width.toDouble(),
+        height: ad.size.height.toDouble(),
+        child: AdWidget(ad: ad),
       ),
     );
   }
